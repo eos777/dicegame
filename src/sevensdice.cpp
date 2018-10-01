@@ -117,10 +117,10 @@ void sevensdice::apply_transfer(T data) {
     checksum256 trx_hash;
     sha256(buf, size, &trx_hash);
 
-    mixed_hash = to_hex((char*)player_seed_hash.hash, sizeof(player_seed_hash.hash)) + to_hex((char*)trx_hash.hash, sizeof(trx_hash.hash));
+    string mixed_hash = to_hex((char*)player_seed_hash.hash, sizeof(player_seed_hash.hash)) + to_hex((char*)trx_hash.hash, sizeof(trx_hash.hash));
 
     checksum256 house_seed_hash;
-    sha256((char*)mixed_hash, sizeof(mixed_hash), &house_seed_hash);
+    sha256(const_cast<char*>(mixed_hash.c_str()), mixed_hash.size() * sizeof(char), &house_seed_hash);
 
     tbets.emplace(_self, [&](bets& bet) {
         bet.id = tbets.available_primary_key();
