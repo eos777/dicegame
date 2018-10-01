@@ -22,14 +22,14 @@ private:
     _tenvironments tenvironments;
 
     uint8_t get_random_roll(checksum256 hash) {
-        uint64_t mix_hash = hash.hash[0] + hash.hash[2] * hash.hash[4] + hash.hash[6] * hash.hash[8] + hash.hash[10] * hash.hash[12] + hash.hash[14] * hash.hash[16]
+        uint64_t mix_hash = hash.hash[0] + hash.hash[2] * hash.hash[4] + hash.hash[6] * hash.hash[8] + hash.hash[10] * hash.hash[12] + hash.hash[14] * hash.hash[16];
         return (mix_hash % 100) + 1;
     }
 
     void check_roll_under(uint64_t& roll_under, asset& quantity, uint8_t& fee) {
         eosio_assert(roll_under >= 2 && roll_under <= 96, "Rollunder must be >= 2, <= 96.");
-        asset player_win_amount = calc_payout(quantity, roll_under, fee) - quantity.amount;
-        eosio_assert(player_win_amount <= max_win(), "Available payout overflow");
+        asset player_win_amount = calc_payout(quantity, roll_under, fee) - quantity;
+        eosio_assert(player_win_amount <= max_win(), "Available fund overflow");
     }
 
     void check_quantity(asset quantity) {
@@ -38,7 +38,7 @@ private:
         eosio_assert(quantity.amount >= MINBET, "Minimum transfer quantity is 0.1");
     }
 
-    asset calc_payout(const asset& quantity, uint64_t roll_under, const uint8_t& fee) {
+    asset calc_payout(const asset& quantity, const uint64_t& roll_under, const uint8_t& fee) {
         const double rate = (100 - fee) / ((double)roll_under - 1.0);
         return asset(rate * quantity.amount, quantity.symbol);
     }
@@ -49,27 +49,31 @@ private:
 
     asset available_balance() {
         auto token_contract = eosio::token(N(eosio.token));
-        const asset balance = token.get_balance(_self, symbol_type(EOS_SYMBOL).name());
+        const asset balance = token_contract.get_balance(_self, symbol_type(EOS_SYMBOL).name());
         auto stenvironments = tenvironments.get();
         const asset available = balance - stenvironments.locked;
-        eosio_assert(available.amount >= 0, "Liabilities pool overdraw")
+        eosio_assert(available.amount >= 0, "Liabilities pool overdraw");
         return available;
     }
 
     void unlock(const asset& amount) {
         auto stenvironments = tenvironments.get();
         asset locked = stenvironments.locked - amount;
-        eosio_assert(locked.amount >= 0, "Fund lock error")
-        tenvironments.modify(stenvironments, _self, [&](auto& g){
+        eosio_assert(locked.amount >= 0, "Fund lock error");
+        stenvironments.locked = locked;
+        tenvironments.set(stenvironments, _self);
+        /*tenvironments.modify(stenvironments, _self, [&](auto& g){
             g.locked = locked;
-        });
+        });*/
     }
 
     void lock(const asset& amount) {
         auto stenvironments = tenvironments.get();
-        tenvironments.modify(stenvironments, _self, [&](auto& g){
+        stenvironments.locked += amount;
+        tenvironments.set(stenvironments, _self);
+        /*tenvironments.modify(stenvironments, _self, [&](auto& g){
             g.locked += amount;
-        });
+        });*/
     }
 
     string winner_msg(const bets& bet) {
@@ -116,6 +120,12 @@ private:
         *player_seed = part;
     }
 
+    bets find_or_error(const uint64_t& id) {
+        auto itr = tbets.find(id);
+        eosio_assert(itr != tbets.end(), "Bet doesn't exist");
+        return *itr;
+    }
+
 };
 
 // apply - это обработчик действий, он прослушивает все входящие действия и реагирует в соответствии со спецификациями внутри функции
@@ -130,7 +140,7 @@ void apply(uint64_t receiver, uint64_t code, uint64_t action) {
 
     if (code != receiver) return;
 
-    switch(action) { EOSIO_API(dice, (launch)(resolvebet)) }
+    switch(action) { EOSIO_API(sevensdice, (launch)(resolvebet)) }
     eosio_exit(0);
 }
 }
