@@ -9,11 +9,11 @@ public:
     /// @abi action
     void launch(public_key pub_key, uint8_t casino_fee = 2, uint8_t ref_bonus = 0.5, uint8_t player_bonus = 0.5);
 
+    /// @abi action
+    void resolvebet(const uint64_t& bet_id, const signature& sig);
+    
     template<typename T>
     void apply_transfer(T data);
-
-    /// @abi action
-    void reveal(const uint64_t& bet_id, const string& seed);
 
     /// @abi action
     void receipt(const results& result);
