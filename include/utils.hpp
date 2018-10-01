@@ -9,10 +9,7 @@
 
 using namespace eosio;
 using std::string;
-using std::vector;
-using std::array;
 using std::to_string;
-using std::hash;
 using std::count;
 
 size_t str_to_sep(const string& str,
