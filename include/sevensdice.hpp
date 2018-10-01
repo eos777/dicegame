@@ -7,7 +7,7 @@ public:
     sevensdice(account_name self) : contract(self), tbets(_self, _self), tenvironments(_self, _self){};
 
     /// @abi action
-    void launch(public_key pub_key, uint8_t casino_fee = 2, double ref_bonus = 0.5, double player_bonus = 0.5);
+    void launch(public_key pub_key, uint8_t casino_fee, double ref_bonus, double player_bonus);
 
     /// @abi action
     void resolvebet(const uint64_t& bet_id, const signature& sig);

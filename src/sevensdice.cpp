@@ -1,16 +1,17 @@
 #include "../include/sevensdice.hpp"
 
-void sevensdice::launch(public_key pub_key, uint8_t casino_fee, double ref_bonus, double player_bonus) {
+void sevensdice::launch(public_key pub_key, uint8_t casino_fee = 2, double ref_bonus = 0.5, double player_bonus = 0.5) {
     require_auth(CASINOSEVENS);
 
-    eosio_assert(tenvironments.exists(), "Contract already launch");
+    eosio_assert(!tenvironments.exists(), "Contract already launch");
 
-    auto stenvironments = tenvironments.get();
-    stenvironments.pub_key = pub_key;
-    stenvironments.casino_fee = casino_fee;
-    stenvironments.ref_bonus = ref_bonus;
-    stenvironments.player_bonus = player_bonus;
-    stenvironments.locked = asset(0, EOS_SYMBOL);
+    environments stenvironments{
+            .pub_key = pub_key,
+            .casino_fee = casino_fee,
+            .ref_bonus = ref_bonus,
+            .player_bonus = player_bonus,
+            .locked = asset(0, EOS_SYMBOL)
+    };
     tenvironments.set(stenvironments, _self);
     /*tenvironments.emplace(_self, [&](auto& g){
         g.pub_key = pub_key;
@@ -142,7 +143,7 @@ void sevensdice::apply_transfer(T data) {
         bet.created_at = now();
     });
 
-    eosio::print("OK");
+    //eosio::print("OK");
 }
 
 void sevensdice::receipt(const results& result) {
