@@ -3,7 +3,6 @@
 class sevensdice : public contract {
 public:
     using contract::contract;
-
     sevensdice(account_name self) : contract(self), tbets(_self, _self), tenvironments(_self, _self){};
 
     /// @abi action
@@ -62,18 +61,12 @@ private:
         eosio_assert(locked.amount >= 0, "Fund lock error");
         stenvironments.locked = locked;
         tenvironments.set(stenvironments, _self);
-        /*tenvironments.modify(stenvironments, _self, [&](auto& g){
-            g.locked = locked;
-        });*/
     }
 
     void lock(const asset& amount) {
         auto stenvironments = tenvironments.get();
         stenvironments.locked += amount;
         tenvironments.set(stenvironments, _self);
-        /*tenvironments.modify(stenvironments, _self, [&](auto& g){
-            g.locked += amount;
-        });*/
     }
 
     string winner_msg(const bets& bet) {
@@ -119,17 +112,8 @@ private:
         part = data.substr(++pos);
         *player_seed = part;
     }
-
-    bets find_or_error(const uint64_t& id) {
-        auto itr = tbets.find(id);
-        eosio_assert(itr != tbets.end(), "Bet doesn't exist");
-        return *itr;
-    }
-
 };
 
-// apply - это обработчик действий, он прослушивает все входящие действия и реагирует в соответствии со спецификациями внутри функции
-// EOSIO_ABI инкапсулирует логику метода apply
 extern "C" {
 void apply(uint64_t receiver, uint64_t code, uint64_t action) {
     sevensdice thiscontract(receiver);
@@ -140,7 +124,7 @@ void apply(uint64_t receiver, uint64_t code, uint64_t action) {
 
     if (code != receiver) return;
 
-    switch(action) { EOSIO_API(sevensdice, (launch)(resolvebet)) }
+    switch(action) { EOSIO_API(sevensdice, (launch)(resolvebet)(receipt)) }
     eosio_exit(0);
 }
 }

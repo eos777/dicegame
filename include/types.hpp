@@ -3,9 +3,8 @@
 
 #define MINBET 1000
 #define EOS_SYMBOL S(4, EOS)
-#define CASINOSEVENS N(casinosevens)
+#define CASINOSEVENS N(sevensdice)
 
-// имя нашей таблицы - это bets, а используемый тип индекса -i64 
 /// @abi table bets i64
 struct bets {
     uint64_t id;
@@ -46,7 +45,5 @@ struct results {
     account_name referrer;
 };
 
-// Multi_index is a form provided in a form that has easy-to-use data structures in the Boost Library.
-// typedef multi_index<N(table_name), object_template_to_use> multi_index_name;
 typedef multi_index<N(bets), bets> _tbet;
 typedef singleton<N(environments), environments> _tenvironments;
