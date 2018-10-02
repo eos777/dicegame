@@ -2,7 +2,6 @@
 
 void sevensdice::launch(public_key pub_key, uint8_t casino_fee, double ref_bonus, double player_bonus) {
     require_auth(CASINOSEVENS);
-
     //eosio_assert(!tenvironments.exists(), "Contract already launch");
 
     environments stenvironments{
@@ -86,7 +85,6 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
 
 template<typename T>
 void sevensdice::apply_transfer(T data) {
-
     if (data.from == _self || data.to != _self) { return; }
 
     uint64_t roll_under;
