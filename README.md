@@ -1,2 +1,0 @@
-# dicegame
-Dice game
