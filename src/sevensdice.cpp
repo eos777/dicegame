@@ -9,7 +9,8 @@ void sevensdice::launch(public_key pub_key, uint8_t casino_fee, double ref_bonus
             .casino_fee = casino_fee,
             .ref_bonus = ref_bonus,
             .player_bonus = player_bonus,
-            .locked = asset(0, EOS_SYMBOL)
+            .locked = asset(0, EOS_SYMBOL),
+            .next_id = 0
     };
     tenvironments.set(stenvironments, _self);
 }
@@ -54,6 +55,7 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
     unlock(current_bet->amount);
 
     const results result{.id = current_bet->id,
+                .game_id = current_bet->game_id,
                 .player = current_bet->player,
                 .amount = current_bet->amount,
                 .roll_under = current_bet->roll_under,
@@ -78,6 +80,14 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
     ref_trx.send(current_bet->id, _self);
 
     tbets.erase(current_bet);
+
+    // logging
+    tlogs.emplace(_self, [&](logs& entry) {
+        entry.game_id = result.game_id;
+        entry.amount = result.amount;
+        entry.payout = result.payout;
+        entry.created_at = now();
+    });
 }
 
 template<typename T>
@@ -87,10 +97,12 @@ void sevensdice::apply_transfer(T data) {
     uint64_t roll_under;
     account_name referrer;
     string player_seed;
+    uint64_t game_id;
 
-    parse_game_params(data.memo, &roll_under, &referrer, &player_seed);
+    parse_game_params(data.memo, &roll_under, &referrer, &player_seed, &game_id);
 
     check_quantity(data.quantity);
+    check_game_id(game_id);
 
     auto stenvironments = tenvironments.get();
 
@@ -107,7 +119,6 @@ void sevensdice::apply_transfer(T data) {
     checksum256 player_seed_hash;
     sha256(const_cast<char*>(player_seed.c_str()), player_seed.size() * sizeof(char), &player_seed_hash);
 
-    //test
     auto size = transaction_size();
     char buf[size];
     read_transaction(buf, size);
@@ -120,7 +131,8 @@ void sevensdice::apply_transfer(T data) {
     sha256(const_cast<char*>(mixed_hash.c_str()), mixed_hash.size() * sizeof(char), &house_seed_hash);
 
     tbets.emplace(_self, [&](bets& bet) {
-        bet.id = tbets.available_primary_key();
+        bet.id = available_bet_id();
+        bet.game_id = game_id;
         bet.player = data.from;
         bet.roll_under = roll_under;
         bet.amount = data.quantity;
@@ -129,6 +141,12 @@ void sevensdice::apply_transfer(T data) {
         bet.referrer = referrer;
         bet.created_at = now();
     });
+}
+
+void sevensdice::cleanlog(uint64_t game_id) {
+    require_auth(CASINOSEVENS);
+    auto entry = tlogs.find(game_id);
+    tlogs.erase(entry);
 }
 
 void sevensdice::receipt(const results& result) {

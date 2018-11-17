@@ -3,7 +3,7 @@
 class sevensdice : public contract {
 public:
     using contract::contract;
-    sevensdice(account_name self) : contract(self), tbets(_self, _self), tenvironments(_self, _self){};
+    sevensdice(account_name self) : contract(self), tbets(_self, _self), tlogs(_self, _self), tenvironments(_self, _self){};
 
     /// @abi action
     void launch(public_key pub_key, uint8_t casino_fee, double ref_bonus, double player_bonus);
@@ -16,13 +16,27 @@ public:
 
     /// @abi action
     void receipt(const results& result);
+
+    ///@abi action
+    void cleanlog(uint64_t bet_id);
 private:
     _tbet tbets;
+    _tlogs tlogs;
     _tenvironments tenvironments;
 
     uint8_t get_random_roll(checksum256 hash) {
         uint64_t mix_hash = hash.hash[0] + hash.hash[2] * hash.hash[4] + hash.hash[6] * hash.hash[8] + hash.hash[10] * hash.hash[12] + hash.hash[14] * hash.hash[16];
         return (mix_hash % 100) + 1;
+    }
+
+    void check_game_id(uint64_t& game_id) {
+        auto iter = tbets.begin();
+        while (iter != tbets.end()) {
+            eosio_assert(iter->game_id != game_id, "GameID collision detected");
+            iter++;
+        }
+        auto exist = tlogs.find(game_id);
+        eosio_assert(exist == tlogs.end(), "GameID collision detected");
     }
 
     void check_roll_under(uint64_t& roll_under, asset& quantity, uint8_t& fee) {
@@ -69,6 +83,14 @@ private:
         tenvironments.set(stenvironments, _self);
     }
 
+    uint64_t available_bet_id() {
+        auto stenvironments = tenvironments.get();
+        uint64_t bet_id = stenvironments.next_id;
+        stenvironments.next_id += 1;
+        tenvironments.set(stenvironments, _self);
+        return bet_id;
+    }
+
     string winner_msg(const bets& bet) {
         string msg = "Bet id: ";
         string id = to_string(bet.id);
@@ -97,9 +119,10 @@ private:
     void parse_game_params(const string data,
                     uint64_t* roll_under,
                     account_name* referrer,
-                    string* player_seed) {
+                    string* player_seed,
+                    uint64_t* game_id) {
         size_t sep_count = count(data.begin(), data.end(), '-');
-        eosio_assert(sep_count == 2, "Invalid memo");
+        eosio_assert(sep_count == 3, "Invalid memo");
 
         size_t pos;
         string part;
@@ -109,8 +132,11 @@ private:
         pos = str_to_sep(data, &part, '-', ++pos);
         eosio_assert(!part.empty(), "No referrer");
         *referrer = eosio::string_to_name(part.c_str());
-        part = data.substr(++pos);
+        pos = str_to_sep(data, &part, '-', ++pos);
         *player_seed = part;
+        part = data.substr(++pos);
+        eosio_assert(!part.empty(), "No gameID");
+        *game_id = stoi(part); // Попробовать передать строку!
     }
 };
 
@@ -124,7 +150,7 @@ void apply(uint64_t receiver, uint64_t code, uint64_t action) {
 
     if (code != receiver) return;
 
-    switch(action) { EOSIO_API(sevensdice, (launch)(resolvebet)(receipt)) }
+    switch(action) { EOSIO_API(sevensdice, (launch)(resolvebet)(cleanlog)(receipt)) }
     eosio_exit(0);
 }
 }
