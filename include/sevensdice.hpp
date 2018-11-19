@@ -1,23 +1,22 @@
 #include "types.hpp"
 
-class sevensdice : public contract {
+class [[eosio::contract]] sevensdice : public contract {
 public:
     using contract::contract;
-    sevensdice(account_name self) : contract(self), tbets(_self, _self), tlogs(_self, _self), tenvironments(_self, _self){};
+    sevensdice(name receiver, name code, datastream<const char*> ds) : contract(receiver, code, ds), tbets(_self, _self.value), tlogs(_self, _self.value), tenvironments(_self, _self.value){};
 
-    /// @abi action
+    [[eosio::action]]
     void launch(public_key pub_key, uint8_t casino_fee, double ref_bonus, double player_bonus);
 
-    /// @abi action
+    [[eosio::action]]
     void resolvebet(const uint64_t& bet_id, const signature& sig);
 
-    template<typename T>
-    void apply_transfer(T data);
+    void apply_transfer(name from, name to, asset quantity, string memo);
 
-    /// @abi action
+    [[eosio::action]]
     void receipt(const results& result);
 
-    ///@abi action
+    [[eosio::action]]
     void cleanlog(uint64_t bet_id);
 private:
     _tbet tbets;
@@ -25,7 +24,8 @@ private:
     _tenvironments tenvironments;
 
     uint8_t get_random_roll(checksum256 hash) {
-        uint64_t mix_hash = hash.hash[0] + hash.hash[2] * hash.hash[4] + hash.hash[6] * hash.hash[8] + hash.hash[10] * hash.hash[12] + hash.hash[14] * hash.hash[16];
+        auto byte_array = hash.extract_as_byte_array();
+        uint64_t mix_hash = byte_array[0] + byte_array[2] * byte_array[4] + byte_array[6] * byte_array[8] + byte_array[10] * byte_array[12] + byte_array[14] * byte_array[16];
         return (mix_hash % 100) + 1;
     }
 
@@ -61,33 +61,35 @@ private:
     }
 
     asset available_balance() {
-        auto token_contract = eosio::token(N(eosio.token));
-        const asset balance = token_contract.get_balance(_self, symbol_type(EOS_SYMBOL).name());
-        auto stenvironments = tenvironments.get();
+        //auto token_contract = eosio::token("eosio.token"_n, "sevenscasino"_n, _ds);
+        const asset balance = eosio::token::get_balance(name("eosio.token"), _self, EOS_SYMBOL.code());
+        auto stenvironments = tenvironments.get(0, "Environment is not set");
         const asset available = balance - stenvironments.locked;
         eosio_assert(available.amount >= 0, "Liabilities pool overdraw");
         return available;
     }
 
     void unlock(const asset& amount) {
-        auto stenvironments = tenvironments.get();
+        auto stenvironments = tenvironments.get(0, "Environment is not set");
         asset locked = stenvironments.locked - amount;
         eosio_assert(locked.amount >= 0, "Fund lock error");
-        stenvironments.locked = locked;
-        tenvironments.set(stenvironments, _self);
+        tenvironments.modify(tenvironments.begin(), _self, [&](environments& e) {
+            e.locked = locked;
+        });
     }
 
     void lock(const asset& amount) {
-        auto stenvironments = tenvironments.get();
-        stenvironments.locked += amount;
-        tenvironments.set(stenvironments, _self);
+        tenvironments.modify(tenvironments.begin(), _self, [&](environments& e) {
+            e.locked += amount;
+        });
     }
 
     uint64_t available_bet_id() {
-        auto stenvironments = tenvironments.get();
+        auto stenvironments = tenvironments.get(0, "Environment is not set");
         uint64_t bet_id = stenvironments.next_id;
-        stenvironments.next_id += 1;
-        tenvironments.set(stenvironments, _self);
+        tenvironments.modify(tenvironments.begin(), _self, [&](environments& e) {
+            e.next_id += 1;
+        });
         return bet_id;
     }
 
@@ -118,7 +120,7 @@ private:
 
     void parse_game_params(const string data,
                     uint64_t* roll_under,
-                    account_name* referrer,
+                    name* referrer,
                     string* player_seed,
                     uint64_t* game_id) {
         size_t sep_count = count(data.begin(), data.end(), '-');
@@ -131,26 +133,31 @@ private:
         *roll_under = stoi(part);
         pos = str_to_sep(data, &part, '-', ++pos);
         eosio_assert(!part.empty(), "No referrer");
-        *referrer = eosio::string_to_name(part.c_str());
+        *referrer = name(part);
         pos = str_to_sep(data, &part, '-', ++pos);
         *player_seed = part;
         part = data.substr(++pos);
         eosio_assert(!part.empty(), "No gameID");
-        *game_id = stoi(part); // Попробовать передать строку!
+        *game_id = stoi(part);
     }
 };
 
 extern "C" {
 void apply(uint64_t receiver, uint64_t code, uint64_t action) {
-    sevensdice thiscontract(receiver);
-
-    if ((code == N(eosio.token)) && (action == N(transfer))) {
-        thiscontract.apply_transfer(unpack_action_data<eosio::token::transfer_args>());
+    if (code == receiver && action == name("launch").value) {
+        execute_action(name(receiver), name(code), &sevensdice::launch);
     }
-
-    if (code != receiver) return;
-
-    switch(action) { EOSIO_API(sevensdice, (launch)(resolvebet)(cleanlog)(receipt)) }
-    eosio_exit(0);
+    if (code == receiver && action == name("resolvebet").value) {
+        execute_action(name(receiver), name(code), &sevensdice::resolvebet);
+    }
+    if (code == receiver && action == name("cleanlog").value) {
+        execute_action(name(receiver), name(code), &sevensdice::cleanlog);
+    }
+    if (code == receiver && action == name("receipt").value) {
+        execute_action(name(receiver), name(code), &sevensdice::receipt);
+    }
+    if (code == name("eosio.token").value && action == name("transfer").value) {
+        execute_action(name(receiver), name(code), &sevensdice::apply_transfer);
+    }
 }
 }

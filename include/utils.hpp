@@ -1,9 +1,7 @@
-#include <iostream>
-#include <eosiolib/crypto.h>
+#include <eosiolib/crypto.hpp>
 #include <eosiolib/eosio.hpp>
 #include <eosiolib/asset.hpp>
 #include <eosiolib/print.hpp>
-#include <eosiolib/types.hpp>
 #include <eosiolib/transaction.hpp>
 #include <eosio.token/eosio.token.hpp>
 

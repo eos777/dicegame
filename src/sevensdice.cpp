@@ -4,15 +4,15 @@ void sevensdice::launch(public_key pub_key, uint8_t casino_fee, double ref_bonus
     require_auth(CASINOSEVENS);
     //eosio_assert(!tenvironments.exists(), "Contract already launch");
 
-    environments stenvironments{
-            .pub_key = pub_key,
-            .casino_fee = casino_fee,
-            .ref_bonus = ref_bonus,
-            .player_bonus = player_bonus,
-            .locked = asset(0, EOS_SYMBOL),
-            .next_id = 0
-    };
-    tenvironments.set(stenvironments, _self);
+    // TODO: get_or_default
+    tenvironments.emplace(_self, [&](environments& e) {
+        e.pub_key = pub_key;
+        e.casino_fee = casino_fee;
+        e.ref_bonus = ref_bonus;
+        e.player_bonus = player_bonus;
+        e.locked = asset(0, EOS_SYMBOL);
+        e.next_id = 0;
+    });
 }
 
 void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
@@ -21,12 +21,11 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
     auto current_bet = tbets.find( bet_id );
     eosio_assert(current_bet != tbets.end(), "Bet doesn't exist");
     
-    auto stenvironments = tenvironments.get();
+    auto stenvironments = tenvironments.get(0, "Environment is not set");
     public_key key = stenvironments.pub_key;
-    assert_recover_key(&current_bet->house_seed_hash, (char*)&sig.data, sizeof(sig.data), (char*)&key.data, sizeof(key.data));
+    assert_recover_key(current_bet->house_seed_hash, sig, key);
 
-    checksum256 sig_hash;
-    sha256((char*)&sig, sizeof(sig), &sig_hash);
+    checksum256 sig_hash = sha256((char*)&sig, sizeof(sig));
 
     const uint64_t random_roll = get_random_roll(sig_hash);
     double fee = (double)stenvironments.casino_fee;
@@ -41,9 +40,9 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
     if (random_roll < current_bet->roll_under) {
         payout = calc_payout(current_bet->amount, current_bet->roll_under, fee);
         action(
-                permission_level{_self, N(active)},
-                N(eosio.token),
-                N(transfer),
+                permission_level{_self, name("active")},
+                name("eosio.token"),
+                name("transfer"),
                 std::make_tuple(
                         _self,
                         current_bet->player,
@@ -66,12 +65,12 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
                 .sig = sig,
                 .referrer = current_bet->referrer};
 
-    SEND_INLINE_ACTION( *this, receipt, {CASINOSEVENS,N(active)}, {result} );
+    SEND_INLINE_ACTION( *this, receipt, {CASINOSEVENS, name("active")}, {result} );
 
     transaction ref_trx{};
-    ref_trx.actions.emplace_back(permission_level{_self, N(active)},
-                N(eosio.token),
-                N(transfer),
+    ref_trx.actions.emplace_back(permission_level{_self, name("active")},
+                name("eosio.token"),
+                name("transfer"),
                 std::make_tuple(_self,
                         current_bet->referrer,
                         ref_bonus,
@@ -90,52 +89,50 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
     });
 }
 
-template<typename T>
-void sevensdice::apply_transfer(T data) {
-    if (data.from == _self || data.to != _self) { return; }
+void sevensdice::apply_transfer(name from, name to, asset quantity, string memo) {
+    if (from == _self || to != _self) { return; }
 
     uint64_t roll_under;
-    account_name referrer;
+    name referrer;
     string player_seed;
     uint64_t game_id;
 
-    parse_game_params(data.memo, &roll_under, &referrer, &player_seed, &game_id);
+    parse_game_params(memo, &roll_under, &referrer, &player_seed, &game_id);
 
-    check_quantity(data.quantity);
+    check_quantity(quantity);
     check_game_id(game_id);
 
-    auto stenvironments = tenvironments.get();
+    auto stenvironments = tenvironments.get(0, "Environment is not set");
 
     uint8_t fee = stenvironments.casino_fee - stenvironments.player_bonus;
-    if (name{referrer}.to_string() == "" || referrer == data.from || !is_account(referrer)) {
+    if (name{referrer}.to_string() == "" || referrer == from || !is_account(referrer)) {
         referrer = CASINOSEVENS;
         fee = stenvironments.casino_fee;
     }
 
-    check_roll_under(roll_under, data.quantity, fee);
+    check_roll_under(roll_under, quantity, fee);
 
-    lock(data.quantity);
+    lock(quantity);
 
-    checksum256 player_seed_hash;
-    sha256(const_cast<char*>(player_seed.c_str()), player_seed.size() * sizeof(char), &player_seed_hash);
+    checksum256 player_seed_hash = sha256(const_cast<char*>(player_seed.c_str()), player_seed.size() * sizeof(char));
 
     auto size = transaction_size();
     char buf[size];
     read_transaction(buf, size);
-    checksum256 trx_hash;
-    sha256(buf, size, &trx_hash);
+    checksum256 trx_hash = sha256(buf, size);
 
-    string mixed_hash = to_hex((char*)player_seed_hash.hash, sizeof(player_seed_hash.hash)) + to_hex((char*)trx_hash.hash, sizeof(trx_hash.hash));
+    auto arr1 = player_seed_hash.extract_as_byte_array();
+    auto arr2 = trx_hash.extract_as_byte_array();
 
-    checksum256 house_seed_hash;
-    sha256(const_cast<char*>(mixed_hash.c_str()), mixed_hash.size() * sizeof(char), &house_seed_hash);
+    string mixed_hash = to_hex((char*)arr1.data(), arr1.size()) + to_hex((char*)arr2.data(), arr2.size());
+    checksum256 house_seed_hash = sha256(const_cast<char*>(mixed_hash.c_str()), mixed_hash.size() * sizeof(char));
 
     tbets.emplace(_self, [&](bets& bet) {
         bet.id = available_bet_id();
         bet.game_id = game_id;
-        bet.player = data.from;
+        bet.player = from;
         bet.roll_under = roll_under;
-        bet.amount = data.quantity;
+        bet.amount = quantity;
         bet.player_seed = player_seed;
         bet.house_seed_hash = house_seed_hash;
         bet.referrer = referrer;
