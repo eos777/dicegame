@@ -132,7 +132,6 @@ private:
         eosio_assert(!part.empty(), "No rollunder");
         *roll_under = stoi(part);
         pos = str_to_sep(data, &part, '-', ++pos);
-        eosio_assert(!part.empty(), "No referrer");
         *referrer = name(part);
         pos = str_to_sep(data, &part, '-', ++pos);
         *player_seed = part;

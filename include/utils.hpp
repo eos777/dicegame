@@ -3,7 +3,7 @@
 #include <eosiolib/asset.hpp>
 #include <eosiolib/print.hpp>
 #include <eosiolib/transaction.hpp>
-#include <eosio.token/eosio.token.hpp>
+#include "eosio.token.hpp"
 
 using namespace eosio;
 using std::string;

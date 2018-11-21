@@ -105,7 +105,7 @@ void sevensdice::apply_transfer(name from, name to, asset quantity, string memo)
     auto stenvironments = tenvironments.get(0, "Environment is not set");
 
     uint8_t fee = stenvironments.casino_fee - stenvironments.player_bonus;
-    if (name{referrer}.to_string() == "" || referrer == from || !is_account(referrer)) {
+    if (name(referrer).to_string() == "" || referrer == from || !is_account(referrer)) {
         referrer = CASINOSEVENS;
         fee = stenvironments.casino_fee;
     }
@@ -149,3 +149,4 @@ void sevensdice::cleanlog(uint64_t game_id) {
 void sevensdice::receipt(const results& result) {
     require_auth(CASINOSEVENS);
 }
+
