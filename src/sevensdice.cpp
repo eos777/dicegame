@@ -51,7 +51,7 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
                 ).send();
     }
 
-    unlock(current_bet->amount);
+    unlock(payout);
 
     const results result{.id = current_bet->id,
                 .game_id = current_bet->game_id,
@@ -110,9 +110,12 @@ void sevensdice::apply_transfer(name from, name to, asset quantity, string memo)
         fee = stenvironments.casino_fee;
     }
 
-    check_roll_under(roll_under, quantity, fee);
+    check_roll_under(roll_under);
 
-    lock(quantity);
+    asset player_possible_win = calc_payout(quantity, roll_under, fee);
+    eosio_assert(player_possible_win <= max_win(), "Available fund overflow");
+
+    lock(player_possible_win);
 
     checksum256 player_seed_hash = sha256(const_cast<char*>(player_seed.c_str()), player_seed.size() * sizeof(char));
 

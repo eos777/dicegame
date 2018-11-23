@@ -39,10 +39,8 @@ private:
         eosio_assert(exist == tlogs.end(), "GameID collision detected");
     }
 
-    void check_roll_under(uint64_t& roll_under, asset& quantity, uint8_t& fee) {
+    void check_roll_under(uint64_t& roll_under) {
         eosio_assert(roll_under >= 2 && roll_under <= 96, "Rollunder must be >= 2, <= 96.");
-        asset player_win_amount = calc_payout(quantity, roll_under, fee) - quantity;
-        eosio_assert(player_win_amount <= max_win(), "Available fund overflow");
     }
 
     void check_quantity(asset quantity) {
@@ -57,7 +55,7 @@ private:
     }
 
     asset max_win() {
-        return available_balance() / 100;
+        return available_balance() / 10;
     }
 
     asset available_balance() {
@@ -79,6 +77,8 @@ private:
     }
 
     void lock(const asset& amount) {
+        asset balance = available_balance() - amount;
+        eosio_assert(balance.amount >= 0, "Fund lock error");
         tenvironments.modify(tenvironments.begin(), _self, [&](environments& e) {
             e.locked += amount;
         });
