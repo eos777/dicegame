@@ -1,19 +1,18 @@
 BLOCKCHAIN_HOST := 127.0.0.1
 BLOCKCHAIN_PORT := 8888
-CONTRACT_ACCOUNT := sevensdice
+CONTRACT_ACCOUNT := dice
 WALLET_HOST := 127.0.0.1
 WALLET_PORT := 8900
 
+all: build
 
-default: build
+build: wasm abi
 
-build: sevensdice.wast sevensdice.abi
+wasm:
+	eosio-cpp src/sevensdice.cpp -o sevensdice.wasm
 
-sevensdice.wast:
-	eosiocpp -o sevensdice.wast src/sevensdice.cpp
-
-sevensdice.abi:
-	eosiocpp -g sevensdice.abi src/sevensdice.cpp
+abi:
+	eosio-abigen src/sevensdice.cpp --contract=hello --output=sevensdice.abi
 
 install: build
 	cleos \
@@ -23,4 +22,4 @@ install: build
 		-p ${CONTRACT_ACCOUNT}
 
 clean:
-	rm sevensdice.wast sevensdice.wasm sevensdice.abi
+	rm sevensdice.wasm sevensdice.abi
