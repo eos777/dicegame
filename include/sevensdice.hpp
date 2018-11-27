@@ -17,7 +17,7 @@ public:
     void receipt(const results& result);
 
     [[eosio::action]]
-    void cleanlog(uint64_t bet_id);
+    void cleanlog(uint64_t game_id);
 private:
     _tbet tbets;
     _tlogs tlogs;
@@ -51,7 +51,8 @@ private:
 
     asset calc_payout(const asset& quantity, const uint64_t& roll_under, const double& fee) {
         const double rate = (100.0 - fee) / (roll_under - 1);
-        return asset(rate * quantity.amount, quantity.symbol);
+        uint64_t payout = rate * (quantity.amount / 10000) * 10000;
+        return asset(payout, quantity.symbol);
     }
 
     asset max_win() {
@@ -72,7 +73,7 @@ private:
         asset locked = stenvironments.locked - amount;
         eosio_assert(locked.amount >= 0, "Fund lock error");
         tenvironments.modify(tenvironments.begin(), _self, [&](environments& e) {
-            e.locked = locked;
+            e.locked -= amount;
         });
     }
 

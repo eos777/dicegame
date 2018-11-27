@@ -36,7 +36,7 @@ struct [[eosio::table, eosio::contract("sevensdice")]] bets {
 
     struct [[eosio::table, eosio::contract("sevensdice")]] environments {
         public_key pub_key;
-        uint8_t casino_fee;
+        double casino_fee;
         double ref_bonus;
         double player_bonus;
         asset locked;
