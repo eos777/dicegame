@@ -19,7 +19,7 @@ struct results {
     name referrer;
 };
 
-struct [[eosio::table, eosio::contract("sevensdice")]] bets {
+struct [[eosio::table, eosio::contract("dicegame")]] bets {
         uint64_t id;
         uint64_t game_id;
         name player;
@@ -34,7 +34,7 @@ struct [[eosio::table, eosio::contract("sevensdice")]] bets {
         EOSLIB_SERIALIZE(bets, (id)(game_id)(player)(roll_under)(amount)(player_seed)(house_seed_hash)(created_at)(referrer))
     };
 
-    struct [[eosio::table, eosio::contract("sevensdice")]] environments {
+    struct [[eosio::table, eosio::contract("dicegame")]] environments {
         public_key pub_key;
         double casino_fee;
         double ref_bonus;
@@ -46,14 +46,15 @@ struct [[eosio::table, eosio::contract("sevensdice")]] bets {
         EOSLIB_SERIALIZE(environments, (pub_key)(casino_fee)(ref_bonus)(player_bonus)(locked)(next_id))
     };
 
-    struct [[eosio::table, eosio::contract("sevensdice")]] logs {
+    struct [[eosio::table, eosio::contract("dicegame")]] logs {
         uint64_t game_id;
         asset amount;
         asset payout;
+        uint64_t random_roll;
         uint64_t created_at;
         uint64_t primary_key() const { return game_id; }
 
-        EOSLIB_SERIALIZE(logs, (game_id)(amount)(payout)(created_at))
+        EOSLIB_SERIALIZE(logs, (game_id)(amount)(payout)(random_roll)(created_at))
     };
 
     typedef multi_index<"bets"_n, bets> _tbet;

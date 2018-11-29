@@ -1,12 +1,12 @@
 #include "types.hpp"
 
-class [[eosio::contract]] sevensdice : public contract {
+class [[eosio::contract]] dicegame : public contract {
 public:
     using contract::contract;
-    sevensdice(name receiver, name code, datastream<const char*> ds) : contract(receiver, code, ds), tbets(_self, _self.value), tlogs(_self, _self.value), tenvironments(_self, _self.value){};
+    dicegame(name receiver, name code, datastream<const char*> ds) : contract(receiver, code, ds), tbets(_self, _self.value), tlogs(_self, _self.value), tenvironments(_self, _self.value){};
 
     [[eosio::action]]
-    void launch(public_key pub_key, uint8_t casino_fee, double ref_bonus, double player_bonus);
+    void launch(public_key pub_key, double casino_fee, double ref_bonus, double player_bonus);
 
     [[eosio::action]]
     void resolvebet(const uint64_t& bet_id, const signature& sig);
@@ -145,19 +145,19 @@ private:
 extern "C" {
 void apply(uint64_t receiver, uint64_t code, uint64_t action) {
     if (code == receiver && action == name("launch").value) {
-        execute_action(name(receiver), name(code), &sevensdice::launch);
+        execute_action(name(receiver), name(code), &dicegame::launch);
     }
     if (code == receiver && action == name("resolvebet").value) {
-        execute_action(name(receiver), name(code), &sevensdice::resolvebet);
+        execute_action(name(receiver), name(code), &dicegame::resolvebet);
     }
     if (code == receiver && action == name("cleanlog").value) {
-        execute_action(name(receiver), name(code), &sevensdice::cleanlog);
+        execute_action(name(receiver), name(code), &dicegame::cleanlog);
     }
     if (code == receiver && action == name("receipt").value) {
-        execute_action(name(receiver), name(code), &sevensdice::receipt);
+        execute_action(name(receiver), name(code), &dicegame::receipt);
     }
     if (code == name("eosio.token").value && action == name("transfer").value) {
-        execute_action(name(receiver), name(code), &sevensdice::apply_transfer);
+        execute_action(name(receiver), name(code), &dicegame::apply_transfer);
     }
 }
 }

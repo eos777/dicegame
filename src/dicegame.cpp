@@ -1,6 +1,6 @@
 #include "../include/dicegame.hpp"
 
-void sevensdice::launch(public_key pub_key, uint8_t casino_fee, double ref_bonus, double player_bonus) {
+void dicegame::launch(public_key pub_key, double casino_fee, double ref_bonus, double player_bonus) {
     require_auth(CASINOSEVENS);
     //eosio_assert(!tenvironments.exists(), "Contract already launch");
 
@@ -15,7 +15,7 @@ void sevensdice::launch(public_key pub_key, uint8_t casino_fee, double ref_bonus
     });
 }
 
-void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
+void dicegame::resolvebet(const uint64_t& bet_id, const signature& sig) {
     require_auth(CASINOSEVENS);
 
     auto current_bet = tbets.find( bet_id );
@@ -30,6 +30,7 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
     const uint64_t random_roll = get_random_roll(sig_hash);
     double fee = (double)stenvironments.casino_fee;
     asset ref_bonus = asset(0, EOS_SYMBOL);
+    asset payout = asset(0, EOS_SYMBOL);
     asset possible_payout = calc_payout(current_bet->amount, current_bet->roll_under, fee);
 
     if (current_bet->referrer != CASINOSEVENS) {
@@ -38,7 +39,7 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
     }
 
     if (random_roll < current_bet->roll_under) {
-        //payout = calc_payout(current_bet->amount, current_bet->roll_under, fee);
+        payout = possible_payout;
         action(
                 permission_level{_self, name("active")},
                 name("eosio.token"),
@@ -46,7 +47,7 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
                 std::make_tuple(
                         _self,
                         current_bet->player,
-                        possible_payout,
+                        payout,
                         winner_msg(*current_bet))
                 ).send();
     }
@@ -59,7 +60,7 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
                 .amount = current_bet->amount,
                 .roll_under = current_bet->roll_under,
                 .random_roll = random_roll,
-                .payout = possible_payout,
+                .payout = payout,
                 .player_seed = current_bet->player_seed,
                 .house_seed_hash = current_bet->house_seed_hash,
                 .sig = sig,
@@ -87,11 +88,12 @@ void sevensdice::resolvebet(const uint64_t& bet_id, const signature& sig) {
         entry.game_id = result.game_id;
         entry.amount = result.amount;
         entry.payout = result.payout;
+        entry.random_roll = result.random_roll;
         entry.created_at = now();
     });
 }
 
-void sevensdice::apply_transfer(name from, name to, asset quantity, string memo) {
+void dicegame::apply_transfer(name from, name to, asset quantity, string memo) {
     if (from == _self || to != _self) { return; }
 
     uint64_t roll_under;
@@ -146,13 +148,13 @@ void sevensdice::apply_transfer(name from, name to, asset quantity, string memo)
     });
 }
 
-void sevensdice::cleanlog(uint64_t game_id) {
+void dicegame::cleanlog(uint64_t game_id) {
     require_auth(CASINOSEVENS);
     auto entry = tlogs.find(game_id);
     tlogs.erase(entry);
 }
 
-void sevensdice::receipt(const results& result) {
+void dicegame::receipt(const results& result) {
     require_auth(CASINOSEVENS);
 }
 
