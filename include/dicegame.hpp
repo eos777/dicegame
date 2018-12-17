@@ -16,6 +16,8 @@ class[[eosio::contract]] dicegame : public contract
 
     [[eosio::action]] void cleanlog(uint64_t game_id);
 
+    [[eosio::action]] void deletedata();
+
   private:
     _tbet tbets;
     _tlogs tlogs;
@@ -54,20 +56,20 @@ class[[eosio::contract]] dicegame : public contract
 
     asset calc_payout(const asset &quantity, const uint64_t &roll_under, const double &fee)
     {
-        const double rate = (100.0 - fee) / (roll_under - 1);
-        uint64_t payout = rate * (quantity.amount / 10000) * 10000;
+        const uint64_t rate = (100.0 - fee) / (roll_under - 1) * 10000;
+        uint64_t payout = (rate * quantity.amount) / 10000;
         return asset(payout, quantity.symbol);
     }
 
     asset max_win()
     {
-        return available_balance() / 10;
+        return available_balance() / 5;
     }
 
     asset available_balance()
     {
         const asset balance = eosio::token::get_balance(name("eosio.token"), _self, EOS_SYMBOL.code());
-        auto stenvironments = tenvironments.get(0, "Environment is not set");
+        auto stenvironments = tenvironments.get();
         const asset available = balance - stenvironments.locked;
         eosio_assert(available.amount >= 0, "Liabilities pool overdraw");
         return available;
@@ -75,30 +77,27 @@ class[[eosio::contract]] dicegame : public contract
 
     void unlock(const asset &amount)
     {
-        auto stenvironments = tenvironments.get(0, "Environment is not set");
-        asset locked = stenvironments.locked - amount;
-        eosio_assert(locked.amount >= 0, "Fund lock error");
-        tenvironments.modify(tenvironments.begin(), _self, [&](environments &e) {
-            e.locked -= amount;
-        });
+        auto stenvironments = tenvironments.get();
+        eosio_assert(stenvironments.locked >= amount, "Fund unlock error");
+        stenvironments.locked -= amount;
+        tenvironments.set(stenvironments, _self);
     }
 
     void lock(const asset &amount)
     {
         asset balance = available_balance() - amount;
         eosio_assert(balance.amount >= 0, "Fund lock error");
-        tenvironments.modify(tenvironments.begin(), _self, [&](environments &e) {
-            e.locked += amount;
-        });
+        auto stenvironments = tenvironments.get();
+        stenvironments.locked += amount;
+        tenvironments.set(stenvironments, _self);
     }
 
     uint64_t available_bet_id()
     {
-        auto stenvironments = tenvironments.get(0, "Environment is not set");
+        auto stenvironments = tenvironments.get();
         uint64_t bet_id = stenvironments.next_id;
-        tenvironments.modify(tenvironments.begin(), _self, [&](environments &e) {
-            e.next_id += 1;
-        });
+        stenvironments.next_id += 1;
+        tenvironments.set(stenvironments, _self);
         return bet_id;
     }
 
@@ -168,6 +167,10 @@ extern "C"
         if (code == receiver && action == name("cleanlog").value)
         {
             execute_action(name(receiver), name(code), &dicegame::cleanlog);
+        }
+        if (code == receiver && action == name("deletedata").value)
+        {
+            execute_action(name(receiver), name(code), &dicegame::deletedata);
         }
         if (code == receiver && action == name("receipt").value)
         {

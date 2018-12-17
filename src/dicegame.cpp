@@ -3,17 +3,13 @@
 void dicegame::launch(public_key pub_key, double casino_fee, double ref_bonus, double player_bonus)
 {
     require_auth(CASINOSEVENS);
-    //eosio_assert(!tenvironments.exists(), "Contract already launch");
 
-    // TODO: get_or_default
-    tenvironments.emplace(_self, [&](environments &e) {
-        e.pub_key = pub_key;
-        e.casino_fee = casino_fee;
-        e.ref_bonus = ref_bonus;
-        e.player_bonus = player_bonus;
-        e.locked = asset(0, EOS_SYMBOL);
-        e.next_id = 0;
-    });
+    auto stenv = tenvironments.get_or_default(environments{.locked = asset(0, EOS_SYMBOL), .next_id = 0});
+    stenv.pub_key = pub_key;
+    stenv.casino_fee = casino_fee;
+    stenv.ref_bonus = ref_bonus;
+    stenv.player_bonus = player_bonus;
+    tenvironments.set(stenv, _self);
 }
 
 void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
@@ -23,7 +19,7 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
     auto current_bet = tbets.find(bet_id);
     eosio_assert(current_bet != tbets.end(), "Bet doesn't exist");
 
-    auto stenvironments = tenvironments.get(0, "Environment is not set");
+    auto stenvironments = tenvironments.get();
     public_key key = stenvironments.pub_key;
     assert_recover_key(current_bet->house_seed_hash, sig, key);
 
@@ -72,7 +68,6 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
 
     SEND_INLINE_ACTION(*this, receipt, {CASINOSEVENS, name("active")}, {result});
 
-    // testing
     if (ref_bonus.amount > 0)
     {
         transaction ref_trx{};
@@ -115,9 +110,8 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
     check_quantity(quantity);
     check_game_id(game_id);
 
-    auto stenvironments = tenvironments.get(0, "Environment is not set");
+    auto stenvironments = tenvironments.get();
 
-    // testing!
     double fee = stenvironments.casino_fee - stenvironments.player_bonus;
     if (name(referrer) == CASINOSEVENS || referrer == from || !is_account(referrer))
     {
@@ -128,8 +122,6 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
     check_roll_under(roll_under);
 
     asset player_possible_win = calc_payout(quantity, roll_under, fee);
-
-    const asset balance = eosio::token::get_balance(name("eosio.token"), _self, EOS_SYMBOL.code());
 
     eosio_assert(player_possible_win <= max_win(), "Available fund overflow");
 
@@ -171,4 +163,23 @@ void dicegame::cleanlog(uint64_t game_id)
 void dicegame::receipt(const results &result)
 {
     require_auth(CASINOSEVENS);
+}
+
+void dicegame::deletedata()
+{
+    require_auth(CASINOSEVENS);
+
+    auto itr = tbets.begin();
+    while (itr != tbets.end())
+    {
+        itr = tbets.erase(itr);
+    }
+
+    auto itr2 = tlogs.begin();
+    while (itr2 != tlogs.end())
+    {
+        itr2 = tlogs.erase(itr2);
+    }
+
+    tenvironments.remove();
 }

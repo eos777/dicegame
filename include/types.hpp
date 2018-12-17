@@ -36,7 +36,7 @@ struct [[ eosio::table, eosio::contract("dicegame") ]] bets
     EOSLIB_SERIALIZE(bets, (id)(game_id)(player)(roll_under)(amount)(player_seed)(house_seed_hash)(created_at)(referrer))
 };
 
-struct [[ eosio::table, eosio::contract("dicegame") ]] environments
+struct [[ eosio::table("envs"), eosio::contract("dicegame") ]] environments
 {
     public_key pub_key;
     double casino_fee;
@@ -44,7 +44,6 @@ struct [[ eosio::table, eosio::contract("dicegame") ]] environments
     double player_bonus;
     asset locked;
     uint64_t next_id;
-    uint64_t primary_key() const { return 0; }
 
     EOSLIB_SERIALIZE(environments, (pub_key)(casino_fee)(ref_bonus)(player_bonus)(locked)(next_id))
 };
@@ -63,4 +62,4 @@ struct [[ eosio::table, eosio::contract("dicegame") ]] logs
 
 typedef multi_index<"bets"_n, bets> _tbet;
 typedef multi_index<"logs"_n, logs> _tlogs;
-typedef multi_index<"envs"_n, environments> _tenvironments;
+typedef eosio::singleton<"envs"_n, environments> _tenvironments;
