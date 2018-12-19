@@ -61,6 +61,7 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
                          .roll_under = current_bet->roll_under,
                          .random_roll = random_roll,
                          .payout = payout,
+                         .ref_payout = ref_bonus,
                          .player_seed = current_bet->player_seed,
                          .house_seed_hash = current_bet->house_seed_hash,
                          .sig = sig,
@@ -88,7 +89,9 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
         entry.game_id = result.game_id;
         entry.amount = result.amount;
         entry.payout = result.payout;
+        entry.ref_payout = result.ref_payout;
         entry.random_roll = result.random_roll;
+        entry.sig = result.sig;
         entry.created_at = now();
     });
 }

@@ -14,6 +14,7 @@ struct results
     uint64_t roll_under;
     uint64_t random_roll;
     asset payout;
+    asset ref_payout;
     string player_seed;
     checksum256 house_seed_hash;
     signature sig;
@@ -53,11 +54,14 @@ struct [[ eosio::table, eosio::contract("dicegame") ]] logs
     uint64_t game_id;
     asset amount;
     asset payout;
+    asset ref_payout;
     uint64_t random_roll;
+    signature sig;
     uint64_t created_at;
+
     uint64_t primary_key() const { return game_id; }
 
-    EOSLIB_SERIALIZE(logs, (game_id)(amount)(payout)(random_roll)(created_at))
+    EOSLIB_SERIALIZE(logs, (game_id)(amount)(payout)(ref_payout)(random_roll)(sig)(created_at))
 };
 
 typedef multi_index<"bets"_n, bets> _tbet;
