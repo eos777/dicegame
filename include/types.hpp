@@ -65,5 +65,5 @@ struct [[ eosio::table, eosio::contract("dicegame") ]] logs
 };
 
 typedef multi_index<"bets"_n, bets> _tbet;
-typedef multi_index<"logs"_n, logs> _tlogs;
+typedef multi_index<"results"_n, logs> _tlogs;
 typedef eosio::singleton<"envs"_n, environments> _tenvironments;

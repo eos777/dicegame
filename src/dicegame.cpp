@@ -29,13 +29,13 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
     double fee = (double)stenvironments.casino_fee;
     asset ref_bonus = asset(0, EOS_SYMBOL);
     asset payout = asset(0, EOS_SYMBOL);
-    asset possible_payout = calc_payout(current_bet->amount, current_bet->roll_under, fee);
 
     if (current_bet->referrer != CASINOSEVENS)
     {
         fee -= stenvironments.player_bonus;
         ref_bonus.amount = current_bet->amount.amount * stenvironments.ref_bonus / 100;
     }
+    asset possible_payout = calc_payout(current_bet->amount, current_bet->roll_under, fee);
 
     if (random_roll < current_bet->roll_under)
     {

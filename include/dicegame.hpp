@@ -148,7 +148,7 @@ class[[eosio::contract]] dicegame : public contract
         *player_seed = part;
         part = data.substr(++pos);
         eosio_assert(!part.empty(), "No gameID");
-        *game_id = stoi(part);
+        *game_id = stoll(part);
     }
 };
 
