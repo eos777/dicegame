@@ -28,10 +28,12 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
     const uint64_t random_roll = get_random_roll(sig_hash);
     double fee = (double)stenvironments.casino_fee;
     asset payout = asset(0, EOS_SYMBOL);
+    asset ref_bonus = asset(0, EOS_SYMBOL);
 
     if (current_bet->referrer != CASINOSEVENS)
     {
         fee -= stenvironments.player_bonus;
+        ref_bonus.amount = current_bet->amount.amount * stenvironments.ref_bonus / 100;
     }
 
     asset possible_payout = calc_payout(current_bet->amount, current_bet->roll_under, fee);
@@ -60,7 +62,7 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
                          .roll_under = current_bet->roll_under,
                          .random_roll = random_roll,
                          .payout = payout,
-                         .ref_payout = current_bet->ref_payout,
+                         .ref_payout = ref_bonus,
                          .player_seed = current_bet->player_seed,
                          .house_seed_hash = current_bet->house_seed_hash,
                          .sig = sig,
@@ -68,13 +70,13 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
 
     SEND_INLINE_ACTION(*this, receipt, {CASINOSEVENS, name("active")}, {result});
 
-    if (current_bet->ref_payout.amount > 0)
+    if (ref_bonus.amount > 0)
     {
         transaction ref_trx{};
         ref_trx.actions.emplace_back(permission_level{_self, name("active")},
                                      _self,
                                      name("reftransfer"),
-                                     std::make_tuple(current_bet->referrer, current_bet->ref_payout, ref_msg(*current_bet)));
+                                     std::make_tuple(current_bet->referrer, ref_bonus, ref_msg(*current_bet)));
         ref_trx.delay_sec = 5;
         ref_trx.send(current_bet->id, _self);
     }
@@ -87,6 +89,7 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
         entry.payout = result.payout;
         entry.random_roll = result.random_roll;
         entry.sig = result.sig;
+        entry.ref_payout = ref_bonus;
         entry.created_at = now();
     });
 }
@@ -153,7 +156,6 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
         bet.player_seed = player_seed;
         bet.house_seed_hash = house_seed_hash;
         bet.referrer = referrer;
-        bet.ref_payout = ref_bonus;
         bet.created_at = now();
     });
 }
