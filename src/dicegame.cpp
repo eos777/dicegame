@@ -27,14 +27,13 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
 
     const uint64_t random_roll = get_random_roll(sig_hash);
     double fee = (double)stenvironments.casino_fee;
-    asset ref_bonus = asset(0, EOS_SYMBOL);
     asset payout = asset(0, EOS_SYMBOL);
 
     if (current_bet->referrer != CASINOSEVENS)
     {
         fee -= stenvironments.player_bonus;
-        ref_bonus.amount = current_bet->amount.amount * stenvironments.ref_bonus / 100;
     }
+
     asset possible_payout = calc_payout(current_bet->amount, current_bet->roll_under, fee);
 
     if (random_roll < current_bet->roll_under)
@@ -61,7 +60,7 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
                          .roll_under = current_bet->roll_under,
                          .random_roll = random_roll,
                          .payout = payout,
-                         .ref_payout = ref_bonus,
+                         .ref_payout = current_bet->ref_payout,
                          .player_seed = current_bet->player_seed,
                          .house_seed_hash = current_bet->house_seed_hash,
                          .sig = sig,
@@ -69,16 +68,13 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
 
     SEND_INLINE_ACTION(*this, receipt, {CASINOSEVENS, name("active")}, {result});
 
-    if (ref_bonus.amount > 0)
+    if (current_bet->ref_payout.amount > 0)
     {
         transaction ref_trx{};
         ref_trx.actions.emplace_back(permission_level{_self, name("active")},
-                                     name("eosio.token"),
-                                     name("transfer"),
-                                     std::make_tuple(_self,
-                                                     current_bet->referrer,
-                                                     ref_bonus,
-                                                     ref_msg(*current_bet)));
+                                     _self,
+                                     name("reftransfer"),
+                                     std::make_tuple(current_bet->referrer, current_bet->ref_payout, ref_msg(*current_bet)));
         ref_trx.delay_sec = 5;
         ref_trx.send(current_bet->id, _self);
     }
@@ -89,7 +85,6 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
         entry.game_id = result.game_id;
         entry.amount = result.amount;
         entry.payout = result.payout;
-        entry.ref_payout = result.ref_payout;
         entry.random_roll = result.random_roll;
         entry.sig = result.sig;
         entry.created_at = now();
@@ -107,6 +102,7 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
     name referrer;
     string player_seed;
     uint64_t game_id;
+    asset ref_bonus = asset(0, EOS_SYMBOL);
 
     parse_game_params(memo, &roll_under, &referrer, &player_seed, &game_id);
 
@@ -115,11 +111,15 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
 
     auto stenvironments = tenvironments.get();
 
-    double fee = stenvironments.casino_fee - stenvironments.player_bonus;
-    if (name(referrer) == CASINOSEVENS || referrer == from || !is_account(referrer))
+    double fee = stenvironments.casino_fee;
+    if (referrer != CASINOSEVENS && referrer != from && is_account(referrer))
+    {
+        fee = stenvironments.casino_fee - stenvironments.player_bonus;
+        ref_bonus.amount = quantity.amount * stenvironments.ref_bonus / 100;
+    }
+    else
     {
         referrer = CASINOSEVENS;
-        fee = stenvironments.casino_fee;
     }
 
     check_roll_under(roll_under);
@@ -129,6 +129,7 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
     eosio_assert(player_possible_win <= max_win(), "Available fund overflow");
 
     lock(player_possible_win);
+    lock(ref_bonus);
 
     checksum256 player_seed_hash = sha256(const_cast<char *>(player_seed.c_str()), player_seed.size() * sizeof(char));
 
@@ -152,8 +153,25 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
         bet.player_seed = player_seed;
         bet.house_seed_hash = house_seed_hash;
         bet.referrer = referrer;
+        bet.ref_payout = ref_bonus;
         bet.created_at = now();
     });
+}
+
+void dicegame::reftransfer(name to, asset quantity, string memo)
+{
+    action(
+        permission_level{_self, name("active")},
+        name("eosio.token"),
+        name("transfer"),
+        std::make_tuple(
+            _self,
+            to,
+            quantity,
+            memo))
+        .send();
+
+    unlock(quantity);
 }
 
 void dicegame::cleanlog(uint64_t game_id)

@@ -32,9 +32,10 @@ struct [[ eosio::table, eosio::contract("dicegame") ]] bets
     checksum256 house_seed_hash;
     uint64_t created_at;
     name referrer;
+    asset ref_payout;
     uint64_t primary_key() const { return id; }
 
-    EOSLIB_SERIALIZE(bets, (id)(game_id)(player)(roll_under)(amount)(player_seed)(house_seed_hash)(created_at)(referrer))
+    EOSLIB_SERIALIZE(bets, (id)(game_id)(player)(roll_under)(amount)(player_seed)(house_seed_hash)(created_at)(referrer)(ref_payout))
 };
 
 struct [[ eosio::table("envs"), eosio::contract("dicegame") ]] environments
@@ -54,14 +55,13 @@ struct [[ eosio::table, eosio::contract("dicegame") ]] logs
     uint64_t game_id;
     asset amount;
     asset payout;
-    asset ref_payout;
     uint64_t random_roll;
     signature sig;
     uint64_t created_at;
 
     uint64_t primary_key() const { return game_id; }
 
-    EOSLIB_SERIALIZE(logs, (game_id)(amount)(payout)(ref_payout)(random_roll)(sig)(created_at))
+    EOSLIB_SERIALIZE(logs, (game_id)(amount)(payout)(random_roll)(sig)(created_at))
 };
 
 typedef multi_index<"bets"_n, bets> _tbet;

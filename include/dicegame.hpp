@@ -12,6 +12,8 @@ class[[eosio::contract]] dicegame : public contract
 
     void apply_transfer(name from, name to, asset quantity, string memo);
 
+    void reftransfer(name to, asset quantity, string memo);
+
     [[eosio::action]] void receipt(const results &result);
 
     [[eosio::action]] void cleanlog(uint64_t game_id);
@@ -152,6 +154,7 @@ class[[eosio::contract]] dicegame : public contract
     }
 };
 
+#define EOSIO_DISPATCH_CUSTOM(TYPE, MEMBERS)
 extern "C"
 {
     void apply(uint64_t receiver, uint64_t code, uint64_t action)
@@ -163,6 +166,10 @@ extern "C"
         if (code == receiver && action == name("resolvebet").value)
         {
             execute_action(name(receiver), name(code), &dicegame::resolvebet);
+        }
+        if (code == receiver && action == name("reftransfer").value)
+        {
+            execute_action(name(receiver), name(code), &dicegame::reftransfer);
         }
         if (code == receiver && action == name("cleanlog").value)
         {
