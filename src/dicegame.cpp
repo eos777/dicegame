@@ -102,33 +102,30 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
     }
 
     uint64_t roll_under;
-    name referrer;
+    name possible_referrer;
     string player_seed;
     uint64_t game_id;
     asset ref_bonus = asset(0, EOS_SYMBOL);
 
-    parse_game_params(memo, &roll_under, &referrer, &player_seed, &game_id);
+    parse_game_params(memo, &roll_under, &possible_referrer, &player_seed, &game_id);
 
     check_quantity(quantity);
     check_game_id(game_id);
 
     auto stenvironments = tenvironments.get();
 
+    name referrer = CASINOSEVENS;
     double fee = stenvironments.casino_fee;
-    if (referrer != CASINOSEVENS && referrer != from && is_account(referrer))
+    if (possible_referrer != CASINOSEVENS && possible_referrer != from && is_account(possible_referrer))
     {
+        referrer = possible_referrer;
         fee = stenvironments.casino_fee - stenvironments.player_bonus;
         ref_bonus.amount = quantity.amount * stenvironments.ref_bonus / 100;
-    }
-    else
-    {
-        referrer = CASINOSEVENS;
     }
 
     check_roll_under(roll_under);
 
     asset player_possible_win = calc_payout(quantity, roll_under, fee);
-
     eosio_assert(player_possible_win <= max_win(), "Available fund overflow");
 
     lock(player_possible_win);
