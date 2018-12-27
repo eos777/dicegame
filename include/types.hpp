@@ -3,7 +3,8 @@
 
 #define MINBET 1000
 #define EOS_SYMBOL symbol("EOS", 4)
-#define CASINOSEVENS name("sevenscasino")
+#define HOUSE name("casinosevens")
+#define SEVENSHELPER name("sevenshelper")
 
 struct results
 {

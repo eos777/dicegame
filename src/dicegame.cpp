@@ -2,7 +2,7 @@
 
 void dicegame::launch(public_key pub_key, double casino_fee, double ref_bonus, double player_bonus)
 {
-    require_auth(CASINOSEVENS);
+    require_auth(SEVENSHELPER);
 
     auto stenv = tenvironments.get_or_default(environments{.locked = asset(0, EOS_SYMBOL), .next_id = 0});
     stenv.pub_key = pub_key;
@@ -14,7 +14,7 @@ void dicegame::launch(public_key pub_key, double casino_fee, double ref_bonus, d
 
 void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
 {
-    require_auth(CASINOSEVENS);
+    require_auth(SEVENSHELPER);
 
     auto current_bet = tbets.find(bet_id);
     eosio_assert(current_bet != tbets.end(), "Bet doesn't exist");
@@ -30,7 +30,7 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
     asset payout = asset(0, EOS_SYMBOL);
     asset ref_bonus = asset(0, EOS_SYMBOL);
 
-    if (current_bet->referrer != CASINOSEVENS)
+    if (current_bet->referrer != HOUSE)
     {
         fee -= stenvironments.player_bonus;
         ref_bonus.amount = current_bet->amount.amount * stenvironments.ref_bonus / 100;
@@ -68,7 +68,7 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
                          .sig = sig,
                          .referrer = current_bet->referrer};
 
-    SEND_INLINE_ACTION(*this, receipt, {CASINOSEVENS, name("active")}, {result});
+    SEND_INLINE_ACTION(*this, receipt, {SEVENSHELPER, name("active")}, {result});
 
     if (ref_bonus.amount > 0)
     {
@@ -114,9 +114,9 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
 
     auto stenvironments = tenvironments.get();
 
-    name referrer = CASINOSEVENS;
+    name referrer = HOUSE;
     double fee = stenvironments.casino_fee;
-    if (possible_referrer != CASINOSEVENS && possible_referrer != from && is_account(possible_referrer))
+    if (possible_referrer != HOUSE && possible_referrer != from && is_account(possible_referrer))
     {
         referrer = possible_referrer;
         fee = stenvironments.casino_fee - stenvironments.player_bonus;
@@ -175,19 +175,19 @@ void dicegame::reftransfer(name to, asset quantity, string memo)
 
 void dicegame::cleanlog(uint64_t game_id)
 {
-    require_auth(CASINOSEVENS);
+    require_auth(SEVENSHELPER);
     auto entry = tlogs.find(game_id);
     tlogs.erase(entry);
 }
 
 void dicegame::receipt(const results &result)
 {
-    require_auth(CASINOSEVENS);
+    require_auth(SEVENSHELPER);
 }
 
 void dicegame::deletedata()
 {
-    require_auth(CASINOSEVENS);
+    require_auth(SEVENSHELPER);
 
     auto itr = tbets.begin();
     while (itr != tbets.end())
