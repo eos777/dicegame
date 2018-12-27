@@ -1,25 +1,30 @@
-BLOCKCHAIN_HOST := 127.0.0.1
-BLOCKCHAIN_PORT := 8888
-CONTRACT_ACCOUNT := dice
-WALLET_HOST := 127.0.0.1
-WALLET_PORT := 9876
+MAIN_HOST :=
+MAIN_PORT := 
+JUNGLE_HOST := jungle2.cryptolions.io
+JUNGLE_PORT := 443
+CONTRACT_ACCOUNT := casinosevens
 
 all: build
 
 build: wasm abi
 
 wasm:
-	eosio-cpp src/sevensdice.cpp -o sevensdice.wasm
+	eosio-cpp src/dicegame.cpp -o dicegame.wasm
 
 abi:
-	eosio-abigen src/sevensdice.cpp --contract=hello --output=sevensdice.abi
+	eosio-abigen src/dicegame.cpp --contract=${CONTRACT_ACCOUNT} --output=dicegame.abi
 
-install: build
+main: build
 	cleos \
-	  --url http://${BLOCKCHAIN_HOST}:${BLOCKCHAIN_PORT} \
-		--wallet-url http://${WALLET_HOST}:${WALLET_PORT} \
+	  --url https://${MAIN_HOST}:${MAIN_PORT} \
+		set contract ${CONTRACT_ACCOUNT} $(shell pwd) \
+		-p ${CONTRACT_ACCOUNT}
+
+jungle: build
+	cleos \
+	  --url https://${JUNGLE_HOST}:${JUNGLE_PORT} \
 		set contract ${CONTRACT_ACCOUNT} $(shell pwd) \
 		-p ${CONTRACT_ACCOUNT}
 
 clean:
-	rm sevensdice.wasm sevensdice.abi
+	rm dicegame.wasm dicegame.abi
