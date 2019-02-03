@@ -94,6 +94,32 @@ class[[eosio::contract]] dicegame : public contract
         tenvironments.set(stenvironments, _self);
     }
 
+    void airdrop_tokens(const uint64_t bet_id, const asset quantity, const name player)
+    {
+        uint64_t drop_amount = quantity.amount / 30;
+        asset token_balance = eosio::token::get_balance(name("sevenstokens"), _self, SVNS_SYMBOL.code());
+
+        if (token_balance.amount == 0)
+        {
+            return;
+        }
+        if (drop_amount > token_balance.amount)
+        {
+            drop_amount = token_balance.amount;
+        }
+
+        action(
+            permission_level{_self, name("active")},
+            name("sevenstokens"),
+            name("transfer"),
+            std::make_tuple(
+                _self,
+                player,
+                asset(drop_amount, token_balance.symbol),
+                airdrop_msg(bet_id)))
+            .send();
+    }
+
     uint64_t available_bet_id()
     {
         auto stenvironments = tenvironments.get();
@@ -127,6 +153,15 @@ class[[eosio::contract]] dicegame : public contract
         string player = name{bet.player}.to_string();
         msg += player;
         msg += "  *** Referral reward *** Play: eos777.io/dice";
+        return msg;
+    }
+
+    string airdrop_msg(const uint64_t bet_id)
+    {
+        string msg = "Bet id: ";
+        string id = to_string(bet_id);
+        msg += id;
+        msg += " *** Enjoy airdrop! *** Play: eos777.io/dice";
         return msg;
     }
 

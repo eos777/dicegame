@@ -3,6 +3,7 @@
 
 #define MINBET 1000
 #define EOS_SYMBOL symbol("EOS", 4)
+#define SVNS_SYMBOL symbol("SVNS", 4)
 #define HOUSE name("casinosevens")
 #define SEVENSHELPER name("sevenshelper")
 

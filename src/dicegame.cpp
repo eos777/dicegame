@@ -81,6 +81,8 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
         ref_trx.send(current_bet->id, _self);
     }
 
+    airdrop_tokens(result.id, result.amount, result.player);
+
     tbets.erase(current_bet);
 
     tlogs.emplace(_self, [&](logs &entry) {
