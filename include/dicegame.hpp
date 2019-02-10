@@ -14,7 +14,7 @@ class[[eosio::contract]] dicegame : public contract
 
     void reftransfer(name to, asset quantity, string memo);
 
-    [[eosio::action]] void receipt(const results &result);
+    [[eosio::action]] void receipt(const info &result);
 
     [[eosio::action]] void cleanlog(uint64_t game_id);
 

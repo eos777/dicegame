@@ -55,20 +55,21 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
 
     unlock(possible_payout);
 
-    const results result{.id = current_bet->id,
-                         .game_id = current_bet->game_id,
-                         .player = current_bet->player,
-                         .amount = current_bet->amount,
-                         .roll_under = current_bet->roll_under,
-                         .random_roll = random_roll,
-                         .payout = payout,
-                         .ref_payout = ref_bonus,
-                         .player_seed = current_bet->player_seed,
-                         .house_seed_hash = current_bet->house_seed_hash,
-                         .sig = sig,
-                         .referrer = current_bet->referrer};
+    const info result{.id = current_bet->id,
+                      .game_id = current_bet->game_id,
+                      .player = current_bet->player,
+                      .amount = current_bet->amount,
+                      .roll_under = current_bet->roll_under,
+                      .random_roll = random_roll,
+                      .payout = payout,
+                      .ref_payout = ref_bonus,
+                      .player_seed = current_bet->player_seed,
+                      .house_seed_hash = current_bet->house_seed_hash,
+                      .sig = sig,
+                      .referrer = current_bet->referrer,
+                      .created_at = current_bet->created_at};
 
-    SEND_INLINE_ACTION(*this, receipt, {SEVENSHELPER, name("active")}, {result});
+    SEND_INLINE_ACTION(*this, receipt, {_self, name("active")}, {result});
 
     if (ref_bonus.amount > 0)
     {
@@ -85,14 +86,14 @@ void dicegame::resolvebet(const uint64_t &bet_id, const signature &sig)
 
     tbets.erase(current_bet);
 
-    tlogs.emplace(_self, [&](logs &entry) {
-        entry.game_id = result.game_id;
-        entry.amount = result.amount;
-        entry.payout = result.payout;
-        entry.random_roll = result.random_roll;
-        entry.sig = result.sig;
-        entry.ref_payout = ref_bonus;
-        entry.created_at = now();
+    tlogs.emplace(_self, [&](logs &l) {
+        l.game_id = result.game_id;
+        l.amount = result.amount;
+        l.payout = result.payout;
+        l.random_roll = result.random_roll;
+        l.sig = result.sig;
+        l.ref_payout = ref_bonus;
+        l.created_at = now();
     });
 }
 
@@ -146,17 +147,29 @@ void dicegame::apply_transfer(name from, name to, asset quantity, string memo)
     string mixed_hash = to_hex((char *)arr1.data(), arr1.size()) + to_hex((char *)arr2.data(), arr2.size());
     checksum256 house_seed_hash = sha256(const_cast<char *>(mixed_hash.c_str()), mixed_hash.size() * sizeof(char));
 
-    tbets.emplace(_self, [&](bets &bet) {
-        bet.id = available_bet_id();
-        bet.game_id = game_id;
-        bet.player = from;
-        bet.roll_under = roll_under;
-        bet.amount = quantity;
-        bet.player_seed = player_seed;
-        bet.house_seed_hash = house_seed_hash;
-        bet.referrer = referrer;
-        bet.created_at = now();
+    const info bet{.id = available_bet_id(),
+                   .game_id = game_id,
+                   .player = from,
+                   .amount = quantity,
+                   .roll_under = roll_under,
+                   .player_seed = player_seed,
+                   .house_seed_hash = house_seed_hash,
+                   .referrer = referrer,
+                   .created_at = now()};
+
+    tbets.emplace(_self, [&](bets &b) {
+        b.id = bet.id;
+        b.game_id = bet.game_id;
+        b.player = bet.player;
+        b.roll_under = bet.roll_under;
+        b.amount = bet.amount;
+        b.player_seed = bet.player_seed;
+        b.house_seed_hash = bet.house_seed_hash;
+        b.referrer = bet.referrer;
+        b.created_at = bet.created_at;
     });
+
+    SEND_INLINE_ACTION(*this, receipt, {_self, name("active")}, {bet});
 }
 
 void dicegame::reftransfer(name to, asset quantity, string memo)
@@ -182,9 +195,15 @@ void dicegame::cleanlog(uint64_t game_id)
     tlogs.erase(entry);
 }
 
-void dicegame::receipt(const results &result)
+void dicegame::receipt(const info &rcpt)
 {
-    require_auth(SEVENSHELPER);
+    require_auth(_self);
+
+    // If the game is resolved
+    if (rcpt.random_roll > 0)
+    {
+        require_recipient(rcpt.player);
+    }
 }
 
 void dicegame::deletedata()

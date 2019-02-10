@@ -7,7 +7,7 @@
 #define HOUSE name("casinosevens")
 #define SEVENSHELPER name("sevenshelper")
 
-struct results
+struct info
 {
     uint64_t id;
     uint64_t game_id;
@@ -20,6 +20,7 @@ struct results
     string player_seed;
     checksum256 house_seed_hash;
     signature sig;
+    uint64_t created_at;
     name referrer;
 };
 
