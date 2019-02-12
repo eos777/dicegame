@@ -7,21 +7,25 @@
 #define HOUSE name("casinosevens")
 #define SEVENSHELPER name("sevenshelper")
 
-struct info
+struct newBet
 {
     uint64_t id;
     uint64_t game_id;
     name player;
     asset amount;
     uint64_t roll_under;
+    string player_seed;
+    checksum256 house_seed_hash;
+    name referrer;
+    uint64_t created_at;
+};
+
+struct resolvedBet : newBet
+{
     uint64_t random_roll;
     asset payout;
     asset ref_payout;
-    string player_seed;
-    checksum256 house_seed_hash;
     signature sig;
-    uint64_t created_at;
-    name referrer;
 };
 
 struct [[ eosio::table, eosio::contract("dicegame") ]] bets

@@ -14,11 +14,13 @@ class[[eosio::contract]] dicegame : public contract
 
     void reftransfer(name to, asset quantity, string memo);
 
-    [[eosio::action]] void receipt(const info &result);
+    [[eosio::action]] void receipt(const resolvedBet &result);
+
+    [[eosio::action]] void notify(const newBet &bet);
 
     [[eosio::action]] void cleanlog(uint64_t game_id);
 
-    [[eosio::action]] void deletedata();
+    [[eosio::action]] void reset();
 
   private:
     _tbet tbets;
@@ -129,39 +131,30 @@ class[[eosio::contract]] dicegame : public contract
         return bet_id;
     }
 
-    string winner_msg(const bets &bet)
-    {
-        string msg = "Bet id: ";
-        string id = to_string(bet.id);
-        msg += id;
-        msg += " Player: ";
-        string player = name{bet.player}.to_string();
-        msg += player;
-        msg += "  *** Winner *** Play: eos777.io/dice";
-        return msg;
-    }
-
-    string ref_msg(const bets &bet)
-    {
-        string msg = "Referrer: ";
-        string referrer = name{bet.referrer}.to_string();
-        msg += referrer;
-        msg += " Bet id: ";
-        string id = to_string(bet.id);
-        msg += id;
-        msg += " Player: ";
-        string player = name{bet.player}.to_string();
-        msg += player;
-        msg += "  *** Referral reward *** Play: eos777.io/dice";
-        return msg;
-    }
-
-    string airdrop_msg(const uint64_t bet_id)
+    string winner_msg(const uint64_t &bet_id)
     {
         string msg = "Bet id: ";
         string id = to_string(bet_id);
         msg += id;
-        msg += " *** Enjoy airdrop! *** Play: eos777.io/dice";
+        msg += " -- Winner! Play: https://eos777.io";
+        return msg;
+    }
+
+    string ref_msg(const uint64_t &bet_id)
+    {
+        string msg = " Bet id: ";
+        string id = to_string(bet_id);
+        msg += id;
+        msg += " -- Referral reward! Play: https://eos777.io";
+        return msg;
+    }
+
+    string airdrop_msg(const uint64_t &bet_id)
+    {
+        string msg = "Bet id: ";
+        string id = to_string(bet_id);
+        msg += id;
+        msg += " -- Tokens distribution. Play: https://eos777.io";
         return msg;
     }
 
@@ -210,13 +203,17 @@ extern "C"
         {
             execute_action(name(receiver), name(code), &dicegame::cleanlog);
         }
-        if (code == receiver && action == name("deletedata").value)
+        if (code == receiver && action == name("reset").value)
         {
-            execute_action(name(receiver), name(code), &dicegame::deletedata);
+            execute_action(name(receiver), name(code), &dicegame::reset);
         }
         if (code == receiver && action == name("receipt").value)
         {
             execute_action(name(receiver), name(code), &dicegame::receipt);
+        }
+        if (code == receiver && action == name("notify").value)
+        {
+            execute_action(name(receiver), name(code), &dicegame::notify);
         }
         if (code == name("eosio.token").value && action == name("transfer").value)
         {
