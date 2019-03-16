@@ -65,7 +65,7 @@ class[[eosio::contract]] dicegame : public contract
 
     asset max_win()
     {
-        return available_balance() / 5;
+        return available_balance() / 2;
     }
 
     asset available_balance()
